@@ -2,14 +2,14 @@ clc
 clear all
 close all
 
-[ir, red, flt_ECG, Fs, ap] = readpwdata('Test.bin');
+[ir, red, flt_ECG, Fs, ap] = readpwdata('Test3.bin');
 
 flt_ECG = flt_ECG(1,103000:end);
 ir = ir(1,103000:end);
 red = red(1,103000:end);
 ap = -ap(1,103000:end);
 
-signal = red;
+signal = ir;
 
 t = GetTime(signal, Fs);
 
@@ -40,7 +40,7 @@ for i = 1:length(test_array)
     counter = counter + 1;
 end
 
-[P_peak_index,N_peak_index,D_peak_index,T_peak_index] = GetPeaks(signal,t,test_index);
+[P_peak_index,N_peak_index,D_peak_index,T_peak_index,Min_peak_index] = GetPeaks(signal,t,test_index);
 
 tiledlayout(3,1)
 
@@ -69,25 +69,30 @@ for i = 1:length(P_peak_index)
     plot(t(P_peak_index(i)),signal(P_peak_index(i)),'bv');
     hold on
 end
-for i = 1:length(D_peak_index)
-    plot(t(D_peak_index(i)),signal(D_peak_index(i)),'go');
+for i = 1:length(Min_peak_index)
+    plot(t(Min_peak_index(i)),signal(Min_peak_index(i)),'rv');
     hold on
 end
-for i = 1:length(N_peak_index)
-    plot(t(N_peak_index(i)),signal(N_peak_index(i)),'ro');
-    hold on
-end
-for i = 1:length(T_peak_index)
-    plot(t(T_peak_index(i)),signal(T_peak_index(i)),'ko');
-    hold on
-end
+% for i = 1:length(D_peak_index)
+%     plot(t(D_peak_index(i)),signal(D_peak_index(i)),'go');
+%     hold on
+% end
+% for i = 1:length(N_peak_index)
+%     plot(t(N_peak_index(i)),signal(N_peak_index(i)),'ro');
+%     hold on
+% end
+% for i = 1:length(T_peak_index)
+%     plot(t(T_peak_index(i)),signal(T_peak_index(i)),'ko');
+%     hold on
+% end
 linkaxes([ax1 ax2 ax3],'x')
 
-function [P_peak_index,N_peak_index,D_peak_index,T_peak_index] = GetPeaks(signal,time,zeroPointIndex)
+function [P_peak_index,N_peak_index,D_peak_index,T_peak_index,Min_peak_index] = GetPeaks(signal,time,zeroPointIndex)
 counter = 1;
 D_counter = 1;
 T_counter = 1;
 N_counter = 1;
+min_counter = 1;
 signalAndtime(1,:) = signal; 
 signalAndtime(2,:) = time;
 
@@ -105,25 +110,36 @@ for i = 1 :2: length(zeroPointIndex)
     
     max_peak1 = max(findpeaks(vector_1(1,:)));
     max_peak2 = max(findpeaks(vector_2(1,:)));
+    min_peak1 = min(vector_1(1,:));
+    min_peak2 = min(vector_2(1,:));
     
     if isempty(max_peak1) && isempty(max_peak2)
         continue;
     elseif isempty(max_peak2)
         P_peak_index(counter) = GetIndex(time,vector_1,max_peak1);
         counter = counter + 1;
+        
+        Min_peak_index(min_counter) = GetIndex(time,vector_1,min_peak1);
+        min_counter = min_counter + 1;
     elseif isempty(max_peak1)
         P_peak_index(counter) = GetIndex(time,vector_2,max_peak2);
         counter = counter + 1;
+        
+        Min_peak_index(min_counter) = GetIndex(time,vector_2,min_peak2);
+        min_counter = min_counter + 1;
     elseif (max_peak1 > max_peak2)
         P_peak_index(counter) = GetIndex(time,vector_1,max_peak1);
         counter = counter + 1;
+        
+        Min_peak_index(min_counter) = GetIndex(time,vector_1,min_peak1);
+        min_counter = min_counter + 1;
         
         if vector_2(1) > vector_2(length(vector_2))
              vector_2 = fliplr(vector_2);
         end
          
         try
-            [N_peak,N_index] = findpeaks(-vector_2(1,:),'MinPeakWidth',5);%"-" - flip the signla to find N notch
+            [N_peak,N_index] = max(findpeaks(-vector_2(1,:),'MinPeakWidth',5));%"-" - flip the signla to find N notch
             N_peak_index(N_counter) = GetIndex(time,vector_2,-max(N_peak));
             N_counter = N_counter + 1;
             
@@ -148,11 +164,14 @@ for i = 1 :2: length(zeroPointIndex)
         P_peak_index(counter) = GetIndex(time,vector_1,max_peak2);
         counter = counter + 1;
         
+        Min_peak_index(min_counter) = GetIndex(time,vector_1,min_peak2);
+        min_counter = min_counter + 1;
+        
         if vector_2(1) > vector_2(length(vector_2))
             vector_2 = fliplr(vector_2);
         end
         try
-           [N_peak,N_index] = findpeaks(-vector_2(1,:),'MinPeakWidth',5); %"-" - flip the signla to find N notch
+           [N_peak,N_index] = max(findpeaks(-vector_2(1,:),'MinPeakWidth',5)); %"-" - flip the signla to find N notch
            N_peak_index(N_counter) = GetIndex(time,vector_2,-max(N_peak));
            N_counter = N_counter + 1;
            
@@ -166,9 +185,7 @@ for i = 1 :2: length(zeroPointIndex)
            T_counter = T_counter + 1;
         catch
         end
-        
     end
-    
 end
 end
 
